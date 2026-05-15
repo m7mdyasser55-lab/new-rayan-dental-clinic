@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a patient or an admin staff member.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["patient", "admin"] },
+        "medicalHistory": { "type": "string", "description": "Encrypted or secure patient medical notes." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A scheduled dental appointment.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "patientPhone": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "notes": { "type": "string" },
+        "reminderSent": { "type": "boolean", "description": "Whether a reminder has been sent for this appointment." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "serviceId", "date", "time", "status"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A dental treatment service offered by the clinic.",
+      "type": "object",
+      "properties": {
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "price": { "type": "number" },
+        "duration": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["nameAr", "descriptionAr"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "Patient feedback.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "contentAr": { "type": "string" },
+        "rating": { "type": "number" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["patientName", "contentAr", "rating"]
+    },
+    "GalleryItem": {
+      "title": "Gallery Item",
+      "description": "Photos of clinic facilities or team.",
+      "type": "object",
+      "properties": {
+        "imageUrl": { "type": "string" },
+        "titleAr": { "type": "string" },
+        "category": { "type": "string", "enum": ["facility", "team", "treatment"] }
+      },
+      "required": ["imageUrl", "titleAr", "category"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A message in a 1-to-1 chat session.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "text", "createdAt"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "System-wide settings.",
+      "type": "object",
+      "properties": {
+        "reminderHours": { "type": "number", "description": "Hours before appointment to send reminder." }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Patient profiles and admin data."
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Master list of all bookings."
+    },
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Available dental treatments."
+    },
+    "testimonials/{testimonialId}": {
+      "schema": "Testimonial",
+      "description": "Public patient reviews."
+    },
+    "gallery/{galleryId}": {
+      "schema": "GalleryItem",
+      "description": "Clinic photo gallery."
+    },
+    "chats/{chatId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Messages within a specific chat thread."
+    },
+    "settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Configuration settings."
+    }
+  }
+}

@@ -1,0 +1,117 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'm7mdyasser55@gmail.com' ||
+        request.auth.token.email == 'rayandentalcare170@gmail.com'
+      );
+    }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // --- Validation Blueprints ---
+    function isValidUser(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 100
+        && (data.get('phone', '') is string && data.get('phone', '').size() <= 20);
+    }
+
+    function isValidAppointment(data) {
+      return (isAdmin() || (isSignedIn() ? data.patientId == request.auth.uid : data.patientId == 'anonymous'))
+        && data.patientName is string && data.patientName.size() <= 100
+        && data.serviceId is string
+        && data.date is string && data.date.size() <= 20
+        && data.time is string && data.time.size() <= 10
+        && data.status in ['pending', 'confirmed', 'completed', 'cancelled']
+        && (data.get('notes', '') is string && data.get('notes', '').size() <= 1000);
+    }
+
+    function isValidService(data) {
+      return data.nameAr is string && data.nameAr.size() <= 200
+        && data.descriptionAr is string && data.descriptionAr.size() <= 2000;
+    }
+
+    function isValidMessage(data) {
+      return data.name is string && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 100
+        && data.message is string && data.message.size() <= 2000;
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone'])) ||
+        isAdmin()
+      );
+    }
+
+    match /appointments/{appointmentId} {
+      allow get: if isSignedIn() && (existing().patientId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.patientId == request.auth.uid || isAdmin());
+      allow create: if isValidAppointment(incoming());
+      allow update: if isSignedIn() && (
+        (existing().patientId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes']) && incoming().status == 'cancelled') ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAdmin();
+      allow create: if isValidMessage(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow create: if isVerified() && incoming().patientId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /gallery/{galleryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow read: if isSignedIn() && chatId.contains(request.auth.uid);
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && chatId.contains(request.auth.uid);
+        allow create: if isSignedIn() && chatId.contains(request.auth.uid) && incoming().senderId == request.auth.uid;
+      }
+    }
+    
+    // Explicit Admin collection check
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+    }
+  }
+}
